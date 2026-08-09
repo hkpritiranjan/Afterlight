@@ -1,14 +1,24 @@
 import { io, type Socket } from 'socket.io-client';
 import { PROTOCOL_VERSION } from '@afterlight/protocol';
 import type { ClientToServerEvents, ServerToClientEvents } from '@afterlight/protocol';
+import type { MeteorCategory, MeteorEntity, StarEntity, ResonanceResponseType } from './types';
 
 type GameSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
 export interface NetworkCallbacks {
-  onSnapshot: (yourPlayerId: string, players: Array<{ playerId: string; x: number; y: number }>) => void;
+  onSnapshot: (
+    yourPlayerId: string,
+    players: Array<{ playerId: string; x: number; y: number }>,
+    meteors: MeteorEntity[],
+    stars: StarEntity[],
+  ) => void;
   onPlayerJoined: (playerId: string, x: number, y: number) => void;
   onPlayerLeft: (playerId: string) => void;
   onPlayerMoved: (playerId: string, x: number, y: number) => void;
+  onMeteorCreated: (meteor: MeteorEntity) => void;
+  onStarCreated: (star: StarEntity, meteorId: string) => void;
+  onLightEarned: (amount: number) => void;
+  onNotificationHeard: (message: string) => void;
 }
 
 export class NetworkClient {
@@ -30,31 +40,54 @@ export class NetworkClient {
       });
     });
 
-    this.socket.on('disconnect', () => {
-      this.connected = false;
-    });
+    this.socket.on('disconnect', () => { this.connected = false; });
 
     this.socket.on('world:snapshot', (payload) => {
       callbacks.onSnapshot(
         payload.yourPlayerId,
         payload.players.map((p) => ({ playerId: p.playerId, x: p.position.x, y: p.position.y })),
+        payload.meteors.map((m) => ({
+          meteorId: m.meteorId,
+          category: m.category as MeteorCategory,
+          content: m.content,
+          x: m.position.x,
+          y: m.position.y,
+        })),
+        payload.stars.map((s) => ({
+          starId: s.starId,
+          meteorId: s.meteorId,
+          x: s.position.x,
+          y: s.position.y,
+        })),
       );
     });
 
-    this.socket.on('player:joined', (payload) => {
-      callbacks.onPlayerJoined(payload.playerId, payload.position.x, payload.position.y);
+    this.socket.on('player:joined', (p) => callbacks.onPlayerJoined(p.playerId, p.position.x, p.position.y));
+    this.socket.on('player:left', (p) => callbacks.onPlayerLeft(p.playerId));
+    this.socket.on('player:moved', (p) => callbacks.onPlayerMoved(p.playerId, p.position.x, p.position.y));
+
+    this.socket.on('meteor:created', (m) => {
+      callbacks.onMeteorCreated({
+        meteorId: m.meteorId,
+        category: m.category as MeteorCategory,
+        content: m.content,
+        x: m.position.x,
+        y: m.position.y,
+      });
     });
 
-    this.socket.on('player:left', (payload) => {
-      callbacks.onPlayerLeft(payload.playerId);
+    this.socket.on('star:created', (s) => {
+      callbacks.onStarCreated(
+        { starId: s.starId, meteorId: s.meteorId, x: s.position.x, y: s.position.y },
+        s.meteorId,
+      );
     });
 
-    this.socket.on('player:moved', (payload) => {
-      callbacks.onPlayerMoved(payload.playerId, payload.position.x, payload.position.y);
-    });
+    this.socket.on('light:earned', (p) => callbacks.onLightEarned(p.amount));
+    this.socket.on('notification:heard', (p) => callbacks.onNotificationHeard(p.message));
 
-    this.socket.on('error', (payload) => {
-      console.error('[network] server error:', payload.code, payload.message);
+    this.socket.on('error', (p) => {
+      console.error('[network] server error:', p.code, p.message);
     });
 
     this.socket.connect();
@@ -63,6 +96,16 @@ export class NetworkClient {
   sendMove(dx: number, dy: number, dt: number): void {
     if (!this.connected) return;
     this.socket.emit('player:move', { dx, dy, dt, sequence: ++this.seq });
+  }
+
+  sendMeteorCreate(category: MeteorCategory, content: string): void {
+    if (!this.connected) return;
+    this.socket.emit('meteor:create', { category, content });
+  }
+
+  sendMeteorAcknowledge(meteorId: string, responseType: ResonanceResponseType): void {
+    if (!this.connected) return;
+    this.socket.emit('meteor:acknowledge', { meteorId, responseType });
   }
 
   disconnect(): void {

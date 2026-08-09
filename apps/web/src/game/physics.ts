@@ -1,5 +1,5 @@
 import { MAP_WIDTH, MAP_HEIGHT, PLAYER_SPEED, PLAYER_RADIUS, INTERACTION_RADIUS } from './constants';
-import type { GameState, MovementVector, Camera, InteractionZone } from './types';
+import type { GameState, MovementVector, Camera, InteractionZone, MeteorEntity } from './types';
 
 export function movePlayer(
   state: GameState,
@@ -59,6 +59,23 @@ export function computeCamera(
     x: clamp(playerX - viewportW / 2, 0, Math.max(0, MAP_WIDTH - viewportW)),
     y: clamp(playerY - viewportH / 2, 0, Math.max(0, MAP_HEIGHT - viewportH)),
   };
+}
+
+export function detectNearbyMeteor(
+  playerX: number,
+  playerY: number,
+  meteors: ReadonlyMap<string, MeteorEntity>,
+): string | null {
+  let nearestId: string | null = null;
+  let nearestDist = INTERACTION_RADIUS;
+  for (const [id, m] of meteors) {
+    const d = dist(playerX, playerY, m.x, m.y);
+    if (d < nearestDist) {
+      nearestDist = d;
+      nearestId = id;
+    }
+  }
+  return nearestId;
 }
 
 // ─── helpers ────────────────────────────────────────────────────────────────

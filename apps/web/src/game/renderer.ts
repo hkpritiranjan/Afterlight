@@ -5,7 +5,7 @@ import {
   PLAYER_RADIUS,
   INTERACTION_RADIUS,
 } from './constants';
-import type { GameState, Camera, RemotePlayer } from './types';
+import type { GameState, Camera, RemotePlayer, MeteorEntity, StarEntity, MeteorCategory } from './types';
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
@@ -27,7 +27,14 @@ export class Renderer {
     this.canvas.style.height = logicalH + 'px';
   }
 
-  render(state: GameState, camera: Camera, remotePlayers: ReadonlyMap<string, RemotePlayer>): void {
+  render(
+    state: GameState,
+    camera: Camera,
+    remotePlayers: ReadonlyMap<string, RemotePlayer>,
+    meteors: ReadonlyMap<string, MeteorEntity>,
+    stars: ReadonlyMap<string, StarEntity>,
+    nearbyMeteorId: string | null,
+  ): void {
     const { ctx, dpr, viewportW, viewportH } = this;
 
     // Reset transform and apply DPR scale each frame
@@ -49,10 +56,9 @@ export class Renderer {
     this.drawWorldBorder();
     this.drawInteractionZones(state);
 
-    for (const rp of remotePlayers.values()) {
-      this.drawRemotePlayer(rp.x, rp.y);
-    }
-
+    for (const s of stars.values()) this.drawStar(s.x, s.y);
+    for (const m of meteors.values()) this.drawMeteor(m, m.meteorId === nearbyMeteorId);
+    for (const rp of remotePlayers.values()) this.drawRemotePlayer(rp.x, rp.y);
     this.drawPlayer(state);
 
     ctx.restore();
@@ -60,8 +66,10 @@ export class Renderer {
     // ── HUD (screen-space) ────────────────────────────────────────────────
     this.drawHUD(state, remotePlayers.size);
 
-    if (state.nearbyZoneId) {
-      this.drawInteractPrompt();
+    if (nearbyMeteorId) {
+      this.drawInteractPrompt('Press E to read');
+    } else if (state.nearbyZoneId) {
+      this.drawInteractPrompt('Press E to create meteor');
     }
   }
 
@@ -159,6 +167,51 @@ export class Renderer {
     }
   }
 
+  private drawMeteor(meteor: MeteorEntity, isNearby: boolean): void {
+    const ctx = this.ctx;
+    const { x, y } = meteor;
+    const col = METEOR_COLORS[meteor.category];
+    const r = isNearby ? PLAYER_RADIUS * 1.4 : PLAYER_RADIUS;
+    const glowR = r * 4;
+
+    const glow = ctx.createRadialGradient(x, y, 0, x, y, glowR);
+    glow.addColorStop(0, col.glow);
+    glow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(x, y, glowR, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.save();
+    ctx.shadowBlur = isNearby ? 20 : 10;
+    ctx.shadowColor = col.shadow;
+    ctx.fillStyle = col.body;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  private drawStar(x: number, y: number): void {
+    const ctx = this.ctx;
+    const glow = ctx.createRadialGradient(x, y, 0, x, y, PLAYER_RADIUS * 5);
+    glow.addColorStop(0, 'rgba(255,245,180,0.22)');
+    glow.addColorStop(1, 'rgba(255,240,100,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(x, y, PLAYER_RADIUS * 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.save();
+    ctx.shadowBlur = 18;
+    ctx.shadowColor = 'rgba(255,245,150,0.9)';
+    ctx.fillStyle = 'rgba(255,250,200,0.95)';
+    ctx.beginPath();
+    ctx.arc(x, y, PLAYER_RADIUS * 0.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
   private drawRemotePlayer(x: number, y: number): void {
     const ctx = this.ctx;
 
@@ -217,9 +270,8 @@ export class Renderer {
     );
   }
 
-  private drawInteractPrompt(): void {
+  private drawInteractPrompt(text: string): void {
     const ctx = this.ctx;
-    const text = 'Press E to interact';
     const cx = this.viewportW / 2;
     const cy = this.viewportH * 0.72;
 
@@ -245,6 +297,14 @@ export class Renderer {
 }
 
 // ─── helpers ────────────────────────────────────────────────────────────────
+
+type CategoryColors = { glow: string; shadow: string; body: string };
+const METEOR_COLORS: Record<MeteorCategory, CategoryColors> = {
+  burden:    { glow: 'rgba(220,80,80,0.18)',   shadow: 'rgba(220,80,80,0.8)',   body: 'rgba(240,140,140,0.9)' },
+  moment:    { glow: 'rgba(80,200,220,0.18)',  shadow: 'rgba(80,200,220,0.8)',  body: 'rgba(140,220,240,0.9)' },
+  hope:      { glow: 'rgba(100,220,120,0.18)', shadow: 'rgba(100,220,120,0.8)', body: 'rgba(150,230,160,0.9)' },
+  gratitude: { glow: 'rgba(245,197,66,0.18)',  shadow: 'rgba(245,197,66,0.8)',  body: 'rgba(250,220,120,0.9)' },
+};
 
 function tileRng(tx: number, ty: number, offset: number): number {
   const n = Math.sin(tx * 127.1 + ty * 311.7 + offset * 74.3) * 43758.5453;

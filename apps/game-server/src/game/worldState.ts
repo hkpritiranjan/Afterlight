@@ -47,6 +47,11 @@ export class WorldState {
     }));
   }
 
+  getPlayer(playerId: string): { x: number; y: number } | null {
+    const p = this.players.get(playerId);
+    return p ? { x: p.x, y: p.y } : null;
+  }
+
   hasPlayer(playerId: string): boolean {
     return this.players.has(playerId);
   }
