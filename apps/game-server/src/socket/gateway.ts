@@ -16,6 +16,15 @@ import {
   createResonance,
   createStar,
   addLightTransaction,
+  getLightBalance,
+  getCatalog,
+  getOwnedItems,
+  buyItem,
+  getGardenObjects,
+  placeGardenObject,
+  removeGardenObject,
+  InsufficientLightError,
+  AlreadyOwnedError,
 } from '../db/queries';
 import { classify } from '../safety/classifier';
 import { WorldState } from '../game/worldState';
@@ -63,11 +72,26 @@ export function registerSocketHandlers(io: GameServer): void {
         // Continue in degraded mode — movement still works, meteors won't persist
       }
 
-      // Load world state for snapshot
+      // Load world state + personal state for snapshot
       let meteors: Awaited<ReturnType<typeof getActiveMeteors>> = [];
       let stars: Awaited<ReturnType<typeof getActiveStars>> = [];
+      let lightBalance = 0;
+      let catalog: Awaited<ReturnType<typeof getCatalog>> = [];
+      let ownedItems: Awaited<ReturnType<typeof getOwnedItems>> = [];
+      let gardenObjects: Awaited<ReturnType<typeof getGardenObjects>> = [];
       try {
-        [meteors, stars] = await Promise.all([getActiveMeteors(pool), getActiveStars(pool)]);
+        if (dbPlayerId) {
+          [meteors, stars, lightBalance, catalog, ownedItems, gardenObjects] = await Promise.all([
+            getActiveMeteors(pool),
+            getActiveStars(pool),
+            getLightBalance(pool, dbPlayerId),
+            getCatalog(pool),
+            getOwnedItems(pool, dbPlayerId),
+            getGardenObjects(pool, dbPlayerId),
+          ]);
+        } else {
+          [meteors, stars] = await Promise.all([getActiveMeteors(pool), getActiveStars(pool)]);
+        }
       } catch {
         // DB unavailable — send empty snapshot
       }
@@ -89,6 +113,10 @@ export function registerSocketHandlers(io: GameServer): void {
           meteorId: s.meteorId,
           position: { x: s.x, y: s.y },
         })),
+        lightBalance,
+        catalog,
+        ownedItems,
+        gardenObjects,
       });
 
       if (!alreadyInWorld) {
@@ -226,6 +254,76 @@ export function registerSocketHandlers(io: GameServer): void {
 
     socket.on('player:interact', (_payload) => {
       // Stage 3+
+    });
+
+    socket.on('shop:buy', async (payload) => {
+      const dbPlayerId = dbPlayerMap.get(socket.id);
+      if (!dbPlayerId) {
+        socket.emit('error', { code: 'NOT_JOINED', message: 'Send player:join first', retryable: false });
+        return;
+      }
+      try {
+        const catalog = await getCatalog(pool);
+        const item = catalog.find((c) => c.itemId === payload.itemId);
+        if (!item) {
+          socket.emit('error', { code: 'ITEM_NOT_FOUND', message: 'Item not found', retryable: false });
+          return;
+        }
+        await buyItem(pool, dbPlayerId, payload.itemId, item.cost);
+        const newBalance = await getLightBalance(pool, dbPlayerId);
+        socket.emit('shop:bought', { item, lightBalance: newBalance });
+        console.log(`[shop] ${dbPlayerId} bought ${item.name} for ${item.cost} Light`);
+      } catch (err) {
+        if (err instanceof InsufficientLightError) {
+          socket.emit('error', { code: 'INSUFFICIENT_LIGHT', message: 'Not enough Light', retryable: false });
+          return;
+        }
+        if (err instanceof AlreadyOwnedError) {
+          socket.emit('error', { code: 'ALREADY_OWNED', message: 'You already own this item', retryable: false });
+          return;
+        }
+        console.error('[db] shop:buy failed:', err);
+        socket.emit('error', { code: 'SERVER_ERROR', message: 'Failed to purchase item', retryable: true });
+      }
+    });
+
+    socket.on('garden:place', async (payload) => {
+      const dbPlayerId = dbPlayerMap.get(socket.id);
+      if (!dbPlayerId) {
+        socket.emit('error', { code: 'NOT_JOINED', message: 'Send player:join first', retryable: false });
+        return;
+      }
+      const GARDEN_W = 700, GARDEN_H = 450;
+      if (payload.x < 0 || payload.x > GARDEN_W || payload.y < 0 || payload.y > GARDEN_H) {
+        socket.emit('error', { code: 'OUT_OF_BOUNDS', message: 'Position outside garden', retryable: false });
+        return;
+      }
+      try {
+        const obj = await placeGardenObject(pool, dbPlayerId, payload.itemId, payload.x, payload.y);
+        socket.emit('garden:placed', { object: obj });
+      } catch (err) {
+        if (err instanceof Error && err.message === 'Item not owned') {
+          socket.emit('error', { code: 'ITEM_NOT_OWNED', message: 'You do not own this item', retryable: false });
+          return;
+        }
+        console.error('[db] garden:place failed:', err);
+        socket.emit('error', { code: 'SERVER_ERROR', message: 'Failed to place item', retryable: true });
+      }
+    });
+
+    socket.on('garden:remove', async (payload) => {
+      const dbPlayerId = dbPlayerMap.get(socket.id);
+      if (!dbPlayerId) {
+        socket.emit('error', { code: 'NOT_JOINED', message: 'Send player:join first', retryable: false });
+        return;
+      }
+      try {
+        const removed = await removeGardenObject(pool, payload.objectId, dbPlayerId);
+        if (removed) socket.emit('garden:removed', { objectId: payload.objectId });
+      } catch (err) {
+        console.error('[db] garden:remove failed:', err);
+        socket.emit('error', { code: 'SERVER_ERROR', message: 'Failed to remove item', retryable: true });
+      }
     });
 
     socket.on('disconnect', (reason) => {

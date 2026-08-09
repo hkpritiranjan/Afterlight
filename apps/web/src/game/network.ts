@@ -1,7 +1,7 @@
 import { io, type Socket } from 'socket.io-client';
 import { PROTOCOL_VERSION } from '@afterlight/protocol';
 import type { ClientToServerEvents, ServerToClientEvents } from '@afterlight/protocol';
-import type { MeteorCategory, MeteorEntity, StarEntity, ResonanceResponseType } from './types';
+import type { MeteorCategory, MeteorEntity, StarEntity, ResonanceResponseType, CatalogItem, OwnedItem, GardenObject } from './types';
 
 type GameSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
@@ -11,6 +11,10 @@ export interface NetworkCallbacks {
     players: Array<{ playerId: string; x: number; y: number }>,
     meteors: MeteorEntity[],
     stars: StarEntity[],
+    lightBalance: number,
+    catalog: CatalogItem[],
+    ownedItems: OwnedItem[],
+    gardenObjects: GardenObject[],
   ) => void;
   onPlayerJoined: (playerId: string, x: number, y: number) => void;
   onPlayerLeft: (playerId: string) => void;
@@ -19,6 +23,9 @@ export interface NetworkCallbacks {
   onStarCreated: (star: StarEntity, meteorId: string) => void;
   onLightEarned: (amount: number) => void;
   onNotificationHeard: (message: string) => void;
+  onShopBought: (item: CatalogItem, lightBalance: number) => void;
+  onGardenPlaced: (obj: GardenObject) => void;
+  onGardenRemoved: (objectId: string) => void;
 }
 
 export class NetworkClient {
@@ -59,8 +66,16 @@ export class NetworkClient {
           x: s.position.x,
           y: s.position.y,
         })),
+        payload.lightBalance ?? 0,
+        payload.catalog ?? [],
+        payload.ownedItems ?? [],
+        payload.gardenObjects ?? [],
       );
     });
+
+    this.socket.on('shop:bought', (p) => callbacks.onShopBought(p.item, p.lightBalance));
+    this.socket.on('garden:placed', (p) => callbacks.onGardenPlaced(p.object));
+    this.socket.on('garden:removed', (p) => callbacks.onGardenRemoved(p.objectId));
 
     this.socket.on('player:joined', (p) => callbacks.onPlayerJoined(p.playerId, p.position.x, p.position.y));
     this.socket.on('player:left', (p) => callbacks.onPlayerLeft(p.playerId));
@@ -106,6 +121,21 @@ export class NetworkClient {
   sendMeteorAcknowledge(meteorId: string, responseType: ResonanceResponseType): void {
     if (!this.connected) return;
     this.socket.emit('meteor:acknowledge', { meteorId, responseType });
+  }
+
+  sendShopBuy(itemId: string): void {
+    if (!this.connected) return;
+    this.socket.emit('shop:buy', { itemId });
+  }
+
+  sendGardenPlace(itemId: string, x: number, y: number): void {
+    if (!this.connected) return;
+    this.socket.emit('garden:place', { itemId, x, y });
+  }
+
+  sendGardenRemove(objectId: string): void {
+    if (!this.connected) return;
+    this.socket.emit('garden:remove', { objectId });
   }
 
   disconnect(): void {
