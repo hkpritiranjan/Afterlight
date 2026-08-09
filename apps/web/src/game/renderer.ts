@@ -34,6 +34,7 @@ export class Renderer {
     meteors: ReadonlyMap<string, MeteorEntity>,
     stars: ReadonlyMap<string, StarEntity>,
     nearbyMeteorId: string | null,
+    now: number,
   ): void {
     const { ctx, dpr, viewportW, viewportH } = this;
 
@@ -52,11 +53,11 @@ export class Renderer {
     ctx.translate(-camera.x, -camera.y);
 
     this.drawWorldFloor(camera);
-    this.drawStars(camera);
+    this.drawStars(camera, now);
     this.drawWorldBorder();
     this.drawInteractionZones(state);
 
-    for (const s of stars.values()) this.drawStar(s.x, s.y);
+    for (const s of stars.values()) this.drawStar(s.x, s.y, now);
     for (const m of meteors.values()) this.drawMeteor(m, m.meteorId === nearbyMeteorId);
     for (const rp of remotePlayers.values()) this.drawRemotePlayer(rp.x, rp.y);
     this.drawPlayer(state);
@@ -101,8 +102,9 @@ export class Renderer {
     ctx.stroke();
   }
 
-  private drawStars(camera: Camera): void {
+  private drawStars(camera: Camera, now: number): void {
     const ctx = this.ctx;
+    const t = now * 0.001;
     const margin = TILE_SIZE * 4;
     const tStartX = Math.floor((camera.x - margin) / TILE_SIZE);
     const tStartY = Math.floor((camera.y - margin) / TILE_SIZE);
@@ -116,10 +118,37 @@ export class Renderer {
         if (r0 > 0.91) {
           const sx = tx * TILE_SIZE + tileRng(tx, ty, 1) * TILE_SIZE;
           const sy = ty * TILE_SIZE + tileRng(tx, ty, 2) * TILE_SIZE;
-          const alpha = 0.25 + tileRng(tx, ty, 3) * 0.55;
+
+          // Twinkling: each star gets its own frequency (0.3–1.7 Hz) and phase
+          const baseAlpha = 0.25 + tileRng(tx, ty, 3) * 0.55;
+          const freq = 0.3 + tileRng(tx, ty, 5) * 1.4;
+          const phase = tileRng(tx, ty, 6) * Math.PI * 2;
+          const alpha = Math.max(0.05, Math.min(0.95, baseAlpha + Math.sin(t * freq + phase) * 0.2));
+
+          // Color: ~20% cool blue, ~20% warm yellow, rest white
+          const colorRng = tileRng(tx, ty, 7);
+          const [r, g, b] = colorRng < 0.2
+            ? [190, 215, 255]   // cool blue-white
+            : colorRng > 0.8
+              ? [255, 235, 175] // warm yellow-white
+              : [255, 255, 255];
+
           const size = tileRng(tx, ty, 4) > 0.96 ? 2 : 1;
-          ctx.fillStyle = `rgba(255,255,255,${alpha.toFixed(2)})`;
+          ctx.fillStyle = `rgba(${r},${g},${b},${alpha.toFixed(2)})`;
           ctx.fillRect(sx, sy, size, size);
+
+          // Rare (~2%) brighter stars get a 4-point cross sparkle
+          if (tileRng(tx, ty, 4) > 0.98) {
+            const sparkAlpha = alpha * (0.4 + Math.sin(t * freq * 1.3 + phase) * 0.15);
+            ctx.save();
+            ctx.strokeStyle = `rgba(${r},${g},${b},${sparkAlpha.toFixed(2)})`;
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(sx - 5, sy); ctx.lineTo(sx + 5, sy);
+            ctx.moveTo(sx, sy - 5); ctx.lineTo(sx, sy + 5);
+            ctx.stroke();
+            ctx.restore();
+          }
         }
       }
     }
@@ -192,23 +221,68 @@ export class Renderer {
     ctx.restore();
   }
 
-  private drawStar(x: number, y: number): void {
+  private drawStar(x: number, y: number, now: number): void {
     const ctx = this.ctx;
-    const glow = ctx.createRadialGradient(x, y, 0, x, y, PLAYER_RADIUS * 5);
-    glow.addColorStop(0, 'rgba(255,245,180,0.22)');
-    glow.addColorStop(1, 'rgba(255,240,100,0)');
+    const t = now * 0.001;
+
+    // Each star uses its position as a seed so they pulse out of sync
+    const seed = (x * 0.017 + y * 0.013) % (Math.PI * 2);
+    const pulse = 1 + Math.sin(t * 1.2 + seed) * 0.1;
+    const outerR = PLAYER_RADIUS * 1.7 * pulse;
+    const innerR = outerR * 0.32;
+
+    // Outer glow halo
+    const glowR = PLAYER_RADIUS * 7;
+    const glow = ctx.createRadialGradient(x, y, 0, x, y, glowR);
+    glow.addColorStop(0,   'rgba(255,250,195,0.32)');
+    glow.addColorStop(0.4, 'rgba(255,242,140,0.14)');
+    glow.addColorStop(1,   'rgba(255,240,100,0)');
     ctx.fillStyle = glow;
     ctx.beginPath();
-    ctx.arc(x, y, PLAYER_RADIUS * 5, 0, Math.PI * 2);
+    ctx.arc(x, y, glowR, 0, Math.PI * 2);
     ctx.fill();
 
+    // 4-pointed ✦ star shape — very slow rotation so it feels alive
+    const rotation = t * 0.015 + seed;
     ctx.save();
-    ctx.shadowBlur = 18;
-    ctx.shadowColor = 'rgba(255,245,150,0.9)';
-    ctx.fillStyle = 'rgba(255,250,200,0.95)';
+    ctx.shadowBlur = 24;
+    ctx.shadowColor = 'rgba(255,250,160,1)';
+    ctx.fillStyle = 'rgba(255,254,225,0.97)';
     ctx.beginPath();
-    ctx.arc(x, y, PLAYER_RADIUS * 0.6, 0, Math.PI * 2);
+    for (let i = 0; i < 8; i++) {
+      const angle = rotation + (i * Math.PI) / 4;
+      const r = i % 2 === 0 ? outerR : innerR;
+      const px = x + Math.cos(angle) * r;
+      const py = y + Math.sin(angle) * r;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
     ctx.fill();
+    ctx.restore();
+
+    // Lens-flare cross lines that pulse with the star
+    const lineLen = outerR * 3.2;
+    const lineAlpha = 0.28 + Math.sin(t * 1.8 + seed) * 0.1;
+    ctx.save();
+    ctx.globalAlpha = lineAlpha;
+    const gradH = ctx.createLinearGradient(x - lineLen, y, x + lineLen, y);
+    gradH.addColorStop(0,   'rgba(255,254,225,0)');
+    gradH.addColorStop(0.5, 'rgba(255,254,225,0.7)');
+    gradH.addColorStop(1,   'rgba(255,254,225,0)');
+    const gradV = ctx.createLinearGradient(x, y - lineLen, x, y + lineLen);
+    gradV.addColorStop(0,   'rgba(255,254,225,0)');
+    gradV.addColorStop(0.5, 'rgba(255,254,225,0.7)');
+    gradV.addColorStop(1,   'rgba(255,254,225,0)');
+    ctx.lineWidth = 0.7;
+    ctx.strokeStyle = gradH;
+    ctx.beginPath();
+    ctx.moveTo(x - lineLen, y); ctx.lineTo(x + lineLen, y);
+    ctx.stroke();
+    ctx.strokeStyle = gradV;
+    ctx.beginPath();
+    ctx.moveTo(x, y - lineLen); ctx.lineTo(x, y + lineLen);
+    ctx.stroke();
     ctx.restore();
   }
 
