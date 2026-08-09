@@ -18,12 +18,14 @@ import { NetworkClient } from './network';
 const MAX_DT = 0.05;
 const LERP_SPEED = 12;
 
+// Zones placed within the initial viewport (~200-550px from spawn) so they're
+// visible immediately on a 1920×1080 screen without needing to walk first.
 const INITIAL_ZONES: InteractionZone[] = [
-  { id: 'zone-a', x: MAP_WIDTH * 0.25, y: MAP_HEIGHT * 0.30, label: 'A quiet hollow' },
-  { id: 'zone-b', x: MAP_WIDTH * 0.65, y: MAP_HEIGHT * 0.25, label: 'The pale arch' },
-  { id: 'zone-c', x: MAP_WIDTH * 0.80, y: MAP_HEIGHT * 0.60, label: 'Open ground' },
-  { id: 'zone-d', x: MAP_WIDTH * 0.40, y: MAP_HEIGHT * 0.75, label: 'The far field' },
-  { id: 'zone-e', x: MAP_WIDTH * 0.15, y: MAP_HEIGHT * 0.70, label: 'Edge of sight' },
+  { id: 'zone-a', x: MAP_WIDTH / 2 - 420, y: MAP_HEIGHT / 2 - 280, label: 'A quiet hollow' },
+  { id: 'zone-b', x: MAP_WIDTH / 2 + 380, y: MAP_HEIGHT / 2 - 330, label: 'The pale arch' },
+  { id: 'zone-c', x: MAP_WIDTH / 2 + 480, y: MAP_HEIGHT / 2 + 220, label: 'Open ground' },
+  { id: 'zone-d', x: MAP_WIDTH / 2,        y: MAP_HEIGHT / 2 + 340, label: 'The far field' },
+  { id: 'zone-e', x: MAP_WIDTH / 2 - 380,  y: MAP_HEIGHT / 2 + 200, label: 'Edge of sight' },
 ];
 
 function createInitialState(): GameState {

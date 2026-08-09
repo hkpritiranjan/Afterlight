@@ -201,10 +201,12 @@ export function registerSocketHandlers(io: GameServer): void {
         });
 
         // Notify acknowledger
+        console.log(`[notify] light:earned → ${socket.id}`);
         socket.emit('light:earned', { amount: 1, reason: 'meteor_acknowledgment' });
 
         // Notify writer ("Someone heard you.")
         const ownerSocketId = socketByDbPlayer.get(ownerDbPlayerId);
+        console.log(`[notify] notification:heard → ownerDbId=${ownerDbPlayerId} socket=${ownerSocketId ?? 'NOT_FOUND'}`);
         if (ownerSocketId) {
           io.to(ownerSocketId).emit('notification:heard', {
             meteorId: payload.meteorId,
