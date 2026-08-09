@@ -1,0 +1,29 @@
+{
+  "name": "@afterlight/game-server",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc --project tsconfig.json",
+    "start": "node dist/index.js",
+    "test": "vitest run --config vitest.config.mts",
+    "test:watch": "vitest --config vitest.config.mts",
+    "typecheck": "tsc --project tsconfig.test.json --noEmit",
+    "lint": "eslint src tests --ext .ts"
+  },
+  "dependencies": {
+    "@afterlight/protocol": "*",
+    "@afterlight/shared-types": "*",
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.12",
+    "@types/supertest": "^6.0.2",
+    "socket.io-client": "^4.7.5",
+    "supertest": "^7.0.0",
+    "tsx": "^4.16.2",
+    "vitest": "^4.1.10"
+  }
+}
