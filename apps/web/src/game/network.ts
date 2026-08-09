@@ -114,12 +114,15 @@ export class NetworkClient {
 
   private getOrCreateToken(): string {
     const key = 'afterlight_session';
-    let token = localStorage.getItem(key);
+    // sessionStorage is tab-scoped: each tab gets its own identity, which is
+    // required for multiplayer (localStorage is shared between all tabs in the
+    // same origin and would make every tab the same DB player).
+    let token = sessionStorage.getItem(key);
     if (!token) {
       token = Array.from(crypto.getRandomValues(new Uint8Array(16)))
         .map((b) => b.toString(16).padStart(2, '0'))
         .join('');
-      localStorage.setItem(key, token);
+      sessionStorage.setItem(key, token);
     }
     return token;
   }
