@@ -215,6 +215,7 @@ export class GameEngine {
       this.meteors,
       this.stars,
       this.nearbyMeteorId,
+      now,
     );
 
     this.rafId = requestAnimationFrame(this.loop);
