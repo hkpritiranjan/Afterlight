@@ -17,7 +17,28 @@ export type ResonanceResponseType =
   | 'one_day_at_a_time'
   | 'glad_you_shared';
 
-export type LightReason = 'meteor_acknowledgment';
+export type LightReason = 'meteor_acknowledgment' | 'item_purchase';
+
+export type GardenSymbol = 'stone' | 'lantern' | 'flower' | 'fern' | 'moonbell';
+
+export interface CatalogItem {
+  itemId: string;
+  name: string;
+  symbol: GardenSymbol;
+  cost: number;
+}
+
+export interface OwnedItem {
+  itemId: string;
+}
+
+export interface GardenObject {
+  objectId: string;
+  itemId: string;
+  symbol: GardenSymbol;
+  x: number;
+  y: number;
+}
 
 export type PlayerStatus = 'active' | 'inactive' | 'banned';
 

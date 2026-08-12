@@ -8,6 +8,9 @@ import type {
   GameCallbacks,
   MeteorCategory,
   ResonanceResponseType,
+  CatalogItem,
+  OwnedItem,
+  GardenObject,
 } from './types';
 import { MAP_WIDTH, MAP_HEIGHT } from './constants';
 import { InputHandler } from './input';
@@ -51,6 +54,12 @@ export class GameEngine {
   private lastTime = 0;
   private callbacks: GameCallbacks;
 
+  // Stage 4: personal space state
+  lightBalance = 0;
+  catalog: CatalogItem[] = [];
+  ownedItems: OwnedItem[] = [];
+  gardenObjects: GardenObject[] = [];
+
   constructor(canvas: HTMLCanvasElement, callbacks: GameCallbacks) {
     this.callbacks = callbacks;
     this.state = createInitialState();
@@ -62,7 +71,7 @@ export class GameEngine {
       process.env.NEXT_PUBLIC_GAME_SERVER_URL ?? 'http://localhost:3001';
 
     this.network = new NetworkClient(serverUrl, {
-      onSnapshot: (yourPlayerId, players, meteors, stars) => {
+      onSnapshot: (yourPlayerId, players, meteors, stars, lightBalance, catalog, ownedItems, gardenObjects) => {
         this.ownPlayerId = yourPlayerId;
         this.remotePlayers.clear();
         for (const p of players) {
@@ -75,6 +84,12 @@ export class GameEngine {
         for (const m of meteors) this.meteors.set(m.meteorId, m);
         this.stars.clear();
         for (const s of stars) this.stars.set(s.starId, s);
+        this.lightBalance = lightBalance;
+        this.catalog = catalog;
+        this.ownedItems = ownedItems;
+        this.gardenObjects = gardenObjects;
+        this.callbacks.onLightUpdate(lightBalance);
+        this.callbacks.onCatalogReady(catalog);
       },
       onPlayerJoined: (playerId, x, y) => {
         if (playerId === this.ownPlayerId) return;
@@ -93,8 +108,24 @@ export class GameEngine {
         this.stars.set(star.starId, star);
         if (this.nearbyMeteorId === meteorId) this.nearbyMeteorId = null;
       },
-      onLightEarned: (amount) => { this.callbacks.onLightUpdate(amount); },
+      onLightEarned: (amount) => {
+        this.lightBalance += amount;
+        this.callbacks.onLightUpdate(this.lightBalance);
+      },
       onNotificationHeard: (message) => { this.callbacks.onNotification(message); },
+      onShopBought: (item, lightBalance) => {
+        this.lightBalance = lightBalance;
+        this.ownedItems = [...this.ownedItems, { itemId: item.itemId }];
+        this.callbacks.onShopBought(item, lightBalance, this.ownedItems);
+      },
+      onGardenPlaced: (obj) => {
+        this.gardenObjects = [...this.gardenObjects, obj];
+        this.callbacks.onGardenChanged(this.gardenObjects);
+      },
+      onGardenRemoved: (objectId) => {
+        this.gardenObjects = this.gardenObjects.filter((o) => o.objectId !== objectId);
+        this.callbacks.onGardenChanged(this.gardenObjects);
+      },
     });
   }
 
@@ -130,6 +161,18 @@ export class GameEngine {
 
   dismissForm(): void {
     this.callbacks.onFormChange({ type: 'none' });
+  }
+
+  buyItem(itemId: string): void {
+    this.network.sendShopBuy(itemId);
+  }
+
+  placeGardenObject(itemId: string, x: number, y: number): void {
+    this.network.sendGardenPlace(itemId, x, y);
+  }
+
+  removeGardenObject(objectId: string): void {
+    this.network.sendGardenRemove(objectId);
   }
 
   private loop = (now: number): void => {

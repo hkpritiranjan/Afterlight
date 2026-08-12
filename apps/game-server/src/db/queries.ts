@@ -1,5 +1,5 @@
 import type { Pool } from 'pg';
-import type { MeteorCategory, ResonanceResponseType } from '@afterlight/shared-types';
+import type { MeteorCategory, ResonanceResponseType, CatalogItem, OwnedItem, GardenObject, GardenSymbol } from '@afterlight/shared-types';
 
 export interface DbPlayer {
   userId: string;
@@ -155,4 +155,166 @@ export async function getActiveStars(pool: Pool): Promise<DbStar[]> {
     x: r.position_x,
     y: r.position_y,
   }));
+}
+
+// ─── Stage 4: Shop & Garden ──────────────────────────────────────────────────
+
+export async function getLightBalance(pool: Pool, playerId: string): Promise<number> {
+  const res = await pool.query<{ balance: string }>(
+    `SELECT COALESCE(
+       SUM(CASE WHEN reason = 'meteor_acknowledgment' THEN amount ELSE 0 END) -
+       SUM(CASE WHEN reason = 'item_purchase'         THEN amount ELSE 0 END),
+       0
+     ) AS balance
+     FROM light_transactions
+     WHERE player_id = $1`,
+    [playerId],
+  );
+  return parseInt(res.rows[0].balance, 10);
+}
+
+export async function getCatalog(pool: Pool): Promise<CatalogItem[]> {
+  const res = await pool.query<{
+    id: string;
+    name: string;
+    metadata: { cost: number; symbol: GardenSymbol };
+  }>(
+    `SELECT id, name, metadata
+     FROM items
+     WHERE item_type = 'garden_object'
+     ORDER BY (metadata->>'cost')::int`,
+  );
+  return res.rows.map((r) => ({
+    itemId: r.id,
+    name: r.name,
+    symbol: r.metadata.symbol,
+    cost: r.metadata.cost,
+  }));
+}
+
+export async function getOwnedItems(pool: Pool, playerId: string): Promise<OwnedItem[]> {
+  const res = await pool.query<{ item_id: string }>(
+    `SELECT item_id FROM player_items WHERE player_id = $1 AND quantity > 0`,
+    [playerId],
+  );
+  return res.rows.map((r) => ({ itemId: r.item_id }));
+}
+
+export class InsufficientLightError extends Error {
+  constructor() { super('Not enough Light'); this.name = 'InsufficientLightError'; }
+}
+export class AlreadyOwnedError extends Error {
+  constructor() { super('Item already owned'); this.name = 'AlreadyOwnedError'; }
+}
+
+export async function buyItem(
+  pool: Pool,
+  playerId: string,
+  itemId: string,
+  cost: number,
+): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const balRes = await client.query<{ balance: string }>(
+      `SELECT COALESCE(
+         SUM(CASE WHEN reason = 'meteor_acknowledgment' THEN amount ELSE 0 END) -
+         SUM(CASE WHEN reason = 'item_purchase'         THEN amount ELSE 0 END),
+         0
+       ) AS balance
+       FROM light_transactions
+       WHERE player_id = $1
+       FOR UPDATE`,
+      [playerId],
+    );
+    const balance = parseInt(balRes.rows[0].balance, 10);
+    if (balance < cost) throw new InsufficientLightError();
+
+    const ownRes = await client.query<{ id: string }>(
+      `INSERT INTO player_items (player_id, item_id, quantity)
+       VALUES ($1, $2, 1)
+       ON CONFLICT (player_id, item_id) DO NOTHING
+       RETURNING id`,
+      [playerId, itemId],
+    );
+    if (ownRes.rowCount === 0) throw new AlreadyOwnedError();
+
+    await client.query(
+      `INSERT INTO light_transactions (player_id, amount, reason, reference_type, reference_id)
+       VALUES ($1, $2, 'item_purchase', 'item', $3)`,
+      [playerId, cost, itemId],
+    );
+
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+export async function getGardenObjects(pool: Pool, playerId: string): Promise<GardenObject[]> {
+  const res = await pool.query<{
+    id: string;
+    item_id: string;
+    metadata: { symbol: GardenSymbol };
+    position_x: number;
+    position_y: number;
+  }>(
+    `SELECT go.id, go.item_id, i.metadata, go.position_x, go.position_y
+     FROM garden_objects go
+     JOIN items i ON i.id = go.item_id
+     WHERE go.player_id = $1`,
+    [playerId],
+  );
+  return res.rows.map((r) => ({
+    objectId: r.id,
+    itemId: r.item_id,
+    symbol: r.metadata.symbol,
+    x: r.position_x,
+    y: r.position_y,
+  }));
+}
+
+export async function placeGardenObject(
+  pool: Pool,
+  playerId: string,
+  itemId: string,
+  x: number,
+  y: number,
+): Promise<GardenObject> {
+  // Verify the player owns the item
+  const ownRes = await pool.query(
+    `SELECT 1 FROM player_items WHERE player_id = $1 AND item_id = $2 AND quantity > 0`,
+    [playerId, itemId],
+  );
+  if (ownRes.rowCount === 0) throw new Error('Item not owned');
+
+  const metaRes = await pool.query<{ metadata: { symbol: GardenSymbol } }>(
+    `SELECT metadata FROM items WHERE id = $1`,
+    [itemId],
+  );
+  const symbol = metaRes.rows[0].metadata.symbol;
+
+  const res = await pool.query<{ id: string }>(
+    `INSERT INTO garden_objects (player_id, item_id, position_x, position_y)
+     VALUES ($1, $2, $3, $4)
+     RETURNING id`,
+    [playerId, itemId, x, y],
+  );
+  return { objectId: res.rows[0].id, itemId, symbol, x, y };
+}
+
+export async function removeGardenObject(
+  pool: Pool,
+  objectId: string,
+  playerId: string,
+): Promise<boolean> {
+  const res = await pool.query(
+    `DELETE FROM garden_objects WHERE id = $1 AND player_id = $2`,
+    [objectId, playerId],
+  );
+  return (res.rowCount ?? 0) > 0;
 }

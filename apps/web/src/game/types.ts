@@ -69,8 +69,13 @@ export type FormState =
   | { type: 'create' }
   | { type: 'read'; meteor: MeteorEntity };
 
+export type { GardenSymbol, CatalogItem, OwnedItem, GardenObject } from '@afterlight/shared-types';
+
 export interface GameCallbacks {
   onFormChange: (state: FormState) => void;
   onNotification: (message: string) => void;
-  onLightUpdate: (delta: number) => void;
+  onLightUpdate: (balance: number) => void;
+  onCatalogReady: (catalog: import('@afterlight/shared-types').CatalogItem[]) => void;
+  onShopBought: (item: import('@afterlight/shared-types').CatalogItem, lightBalance: number, ownedItems: import('@afterlight/shared-types').OwnedItem[]) => void;
+  onGardenChanged: (gardenObjects: import('@afterlight/shared-types').GardenObject[]) => void;
 }

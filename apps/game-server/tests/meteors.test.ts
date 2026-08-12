@@ -16,32 +16,40 @@ import type {
 // ── Mock the DB so these tests run without Docker ─────────────────────────────
 vi.mock('../src/db/client', () => ({ pool: {} }));
 
-vi.mock('../src/db/queries', () => ({
-  getOrCreatePlayer: vi.fn().mockImplementation((_pool, sessionToken) =>
-    Promise.resolve({ userId: `user-${sessionToken}`, playerId: `player-${sessionToken}` }),
-  ),
-  createMeteor: vi.fn().mockImplementation(
-    (_pool, _playerId, category, content, x, y) =>
-      Promise.resolve({
-        meteorId: 'meteor-abc',
-        category,
-        content,
-        x,
-        y,
-        playerId: _playerId,
-      }),
-  ),
-  getActiveMeteors: vi.fn().mockResolvedValue([
-    { meteorId: 'meteor-abc', category: 'burden', content: 'test', x: 1920, y: 1440, playerId: 'player-token-1' },
-  ]),
-  getActiveStars: vi.fn().mockResolvedValue([]),
-  getMeteorOwner: vi.fn().mockImplementation((_pool, meteorId) =>
-    meteorId === 'meteor-abc' ? Promise.resolve('player-token-1') : Promise.resolve(null),
-  ),
-  createResonance: vi.fn().mockResolvedValue(undefined),
-  createStar: vi.fn().mockResolvedValue({ starId: 'star-xyz', meteorId: 'meteor-abc', x: 1920, y: 1440 }),
-  addLightTransaction: vi.fn().mockResolvedValue(undefined),
-}));
+vi.mock('../src/db/queries', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/db/queries')>();
+  return {
+    ...actual,
+    getOrCreatePlayer: vi.fn().mockImplementation((_pool, sessionToken) =>
+      Promise.resolve({ userId: `user-${sessionToken}`, playerId: `player-${sessionToken}` }),
+    ),
+    createMeteor: vi.fn().mockImplementation(
+      (_pool, _playerId, category, content, x, y) =>
+        Promise.resolve({
+          meteorId: 'meteor-abc',
+          category,
+          content,
+          x,
+          y,
+          playerId: _playerId,
+        }),
+    ),
+    getActiveMeteors: vi.fn().mockResolvedValue([
+      { meteorId: 'meteor-abc', category: 'burden', content: 'test', x: 1920, y: 1440, playerId: 'player-token-1' },
+    ]),
+    getActiveStars:   vi.fn().mockResolvedValue([]),
+    getLightBalance:  vi.fn().mockResolvedValue(0),
+    getCatalog:       vi.fn().mockResolvedValue([]),
+    getOwnedItems:    vi.fn().mockResolvedValue([]),
+    getGardenObjects: vi.fn().mockResolvedValue([]),
+    getMeteorOwner: vi.fn().mockImplementation((_pool, meteorId) =>
+      meteorId === 'meteor-abc' ? Promise.resolve('player-token-1') : Promise.resolve(null),
+    ),
+    createResonance:     vi.fn().mockResolvedValue(undefined),
+    createStar:          vi.fn().mockResolvedValue({ starId: 'star-xyz', meteorId: 'meteor-abc', x: 1920, y: 1440 }),
+    addLightTransaction: vi.fn().mockResolvedValue(undefined),
+  };
+});
 
 type TestClient = ClientSocket<ServerToClientEvents, ClientToServerEvents>;
 

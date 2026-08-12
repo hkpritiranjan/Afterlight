@@ -1,4 +1,6 @@
-import type { MeteorCategory, ResonanceResponseType, Position } from '@afterlight/shared-types';
+import type { MeteorCategory, ResonanceResponseType, Position, CatalogItem, OwnedItem, GardenObject } from '@afterlight/shared-types';
+
+export type { CatalogItem, OwnedItem, GardenObject };
 
 export const PROTOCOL_VERSION = 1;
 
@@ -10,6 +12,9 @@ export interface ClientToServerEvents {
   'meteor:create': (payload: MeteorCreatePayload) => void;
   'meteor:acknowledge': (payload: MeteorAcknowledgePayload) => void;
   'player:interact': (payload: PlayerInteractPayload) => void;
+  'shop:buy': (payload: ShopBuyPayload) => void;
+  'garden:place': (payload: GardenPlacePayload) => void;
+  'garden:remove': (payload: GardenRemovePayload) => void;
 }
 
 export interface PlayerJoinPayload {
@@ -42,6 +47,9 @@ export interface PlayerInteractPayload {
 
 export interface ServerToClientEvents {
   'world:snapshot': (payload: WorldSnapshotPayload) => void;
+  'shop:bought': (payload: ShopBoughtPayload) => void;
+  'garden:placed': (payload: GardenPlacedPayload) => void;
+  'garden:removed': (payload: GardenRemovedPayload) => void;
   'player:joined': (payload: PlayerJoinedPayload) => void;
   'player:left': (payload: PlayerLeftPayload) => void;
   'player:moved': (payload: PlayerMovedPayload) => void;
@@ -58,6 +66,10 @@ export interface WorldSnapshotPayload {
   players: PlayerState[];
   meteors: PublicMeteor[];
   stars: StarState[];
+  lightBalance: number;
+  catalog: CatalogItem[];
+  ownedItems: OwnedItem[];
+  gardenObjects: GardenObject[];
 }
 
 export interface PlayerState {
@@ -126,6 +138,35 @@ export interface ErrorPayload {
   code: string;
   message: string;
   retryable: boolean;
+}
+
+// ─── Stage 4: Shop & Garden ──────────────────────────────────────────────────
+
+export interface ShopBuyPayload {
+  itemId: string;
+}
+
+export interface GardenPlacePayload {
+  itemId: string;
+  x: number;
+  y: number;
+}
+
+export interface GardenRemovePayload {
+  objectId: string;
+}
+
+export interface ShopBoughtPayload {
+  item: CatalogItem;
+  lightBalance: number;
+}
+
+export interface GardenPlacedPayload {
+  object: GardenObject;
+}
+
+export interface GardenRemovedPayload {
+  objectId: string;
 }
 
 // ─── Inter-server data (Socket.IO internal) ─────────────────────────────────
