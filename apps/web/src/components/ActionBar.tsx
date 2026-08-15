@@ -1,15 +1,16 @@
 'use client';
 
 interface Props {
+  onMap: () => void;
   onRelease: () => void;
   onGarden: () => void;
 }
 
-export default function ActionBar({ onRelease, onGarden }: Props) {
+export default function ActionBar({ onMap, onRelease, onGarden }: Props) {
   return (
     <div style={bar}>
       {/* Map */}
-      <button style={sideBtn} aria-label="Map" title="Map">
+      <button style={sideBtn} onClick={onMap} aria-label="Map" title="Map">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
           <line x1="9" y1="3" x2="9" y2="18"/>

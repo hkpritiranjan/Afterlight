@@ -1,7 +1,13 @@
 'use client';
 import { useEffect, useRef, useState, useCallback, type RefObject } from 'react';
 import { GameEngine } from '../game/engine';
-import type { FormState, MeteorCategory, ResonanceResponseType, CatalogItem, OwnedItem, GardenObject, MeteorEntity } from '../game/types';
+import type { FormState, MeteorCategory, ResonanceResponseType, CatalogItem, OwnedItem, GardenObject, MeteorEntity, StarEntity, InteractionZone, RemotePlayer } from '../game/types';
+
+export interface MapSnapshot {
+  playerPos: { x: number; y: number };
+  remotePlayers: RemotePlayer[];
+  zones: InteractionZone[];
+}
 
 export interface GameAPI {
   formState: FormState;
@@ -12,6 +18,8 @@ export interface GameAPI {
   gardenObjects: GardenObject[];
   onlineCount: number;
   meteors: MeteorEntity[];
+  stars: StarEntity[];
+  getMapSnapshot: () => MapSnapshot;
   openCreateForm: () => void;
   submitMeteor: (category: MeteorCategory, content: string) => void;
   acknowledgeMeteor: (meteorId: string, responseType: ResonanceResponseType) => void;
@@ -31,6 +39,7 @@ export function useGame(canvasRef: RefObject<HTMLCanvasElement | null>): GameAPI
   const [gardenObjects, setGardenObjects] = useState<GardenObject[]>([]);
   const [onlineCount, setOnlineCount]     = useState(1);
   const [meteors, setMeteors]             = useState<MeteorEntity[]>([]);
+  const [stars, setStars]                 = useState<StarEntity[]>([]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -51,6 +60,7 @@ export function useGame(canvasRef: RefObject<HTMLCanvasElement | null>): GameAPI
       onGardenChanged: setGardenObjects,
       onOnlineCountChange: setOnlineCount,
       onMeteorsChanged: setMeteors,
+      onStarsChanged: setStars,
     });
     engineRef.current = engine;
 
@@ -85,6 +95,12 @@ export function useGame(canvasRef: RefObject<HTMLCanvasElement | null>): GameAPI
     gardenObjects,
     onlineCount,
     meteors,
+    stars,
+    getMapSnapshot: () => ({
+      playerPos: engineRef.current?.getPlayerPos() ?? { x: 0, y: 0 },
+      remotePlayers: engineRef.current?.getRemotePlayers() ?? [],
+      zones: engineRef.current?.getZones() ?? [],
+    }),
     openCreateForm:    ()             => engineRef.current?.openCreateForm(),
     submitMeteor:      (cat, content) => engineRef.current?.submitMeteor(cat, content),
     acknowledgeMeteor: (id, type)     => engineRef.current?.acknowledgeMeteor(id, type),

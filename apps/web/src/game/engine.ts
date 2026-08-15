@@ -89,6 +89,7 @@ export class GameEngine {
         this.callbacks.onCatalogReady(catalog);
         this.callbacks.onOnlineCountChange(this.remotePlayers.size + 1);
         this.callbacks.onMeteorsChanged([...this.meteors.values()]);
+        this.callbacks.onStarsChanged([...this.stars.values()]);
       },
       onPlayerJoined: (playerId, x, y) => {
         if (playerId === this.ownPlayerId) return;
@@ -114,6 +115,7 @@ export class GameEngine {
         this.stars.set(star.starId, star);
         if (this.nearbyMeteorId === meteorId) this.nearbyMeteorId = null;
         this.callbacks.onMeteorsChanged([...this.meteors.values()]);
+        this.callbacks.onStarsChanged([...this.stars.values()]);
       },
       onLightEarned: (amount) => {
         this.lightBalance += amount;
@@ -165,6 +167,10 @@ export class GameEngine {
     this.network.sendMeteorAcknowledge(meteorId, responseType);
     this.callbacks.onFormChange({ type: 'none' });
   }
+
+  getPlayerPos(): { x: number; y: number } { return { ...this.state.player }; }
+  getRemotePlayers(): RemotePlayer[] { return [...this.remotePlayers.values()]; }
+  getZones(): InteractionZone[] { return [...this.state.interactionZones]; }
 
   openCreateForm(): void {
     this.callbacks.onFormChange({ type: 'create' });

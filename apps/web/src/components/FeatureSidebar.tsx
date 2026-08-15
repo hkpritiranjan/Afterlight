@@ -11,12 +11,16 @@ const FEATURES = [
 
 interface Props {
   onRelease?: () => void;
+  onMap?: () => void;
+  onStars?: () => void;
   onGarden?: () => void;
 }
 
-export default function FeatureSidebar({ onRelease, onGarden }: Props) {
+export default function FeatureSidebar({ onRelease, onMap, onStars, onGarden }: Props) {
   const handlers: Partial<Record<string, () => void>> = {
     Release: onRelease,
+    Meteors: onMap,
+    Stars: onStars,
     Garden: onGarden,
   };
 

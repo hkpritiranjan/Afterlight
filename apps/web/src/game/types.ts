@@ -80,4 +80,5 @@ export interface GameCallbacks {
   onGardenChanged: (gardenObjects: import('@afterlight/shared-types').GardenObject[]) => void;
   onOnlineCountChange: (count: number) => void;
   onMeteorsChanged: (meteors: MeteorEntity[]) => void;
+  onStarsChanged: (stars: StarEntity[]) => void;
 }

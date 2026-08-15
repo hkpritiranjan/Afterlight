@@ -14,44 +14,53 @@ import FeatureSidebar     from './FeatureSidebar';
 import ActionBar          from './ActionBar';
 import DailyLightCard     from './DailyLightCard';
 import ActiveMeteorsPanel from './ActiveMeteorsPanel';
+import MapOverlay         from './MapOverlay';
+import StarsPanel         from './StarsPanel';
 
 export default function GameCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const {
     formState, notification, lightBalance,
     catalog, ownedItems, gardenObjects,
-    onlineCount, meteors,
+    onlineCount, meteors, stars, getMapSnapshot,
     openCreateForm, submitMeteor, acknowledgeMeteor, dismissForm,
     buyItem, placeGardenObject, removeGardenObject,
   } = useGame(canvasRef);
 
-  const [shopOpen, setShopOpen]     = useState(false);
+  const [shopOpen,   setShopOpen]   = useState(false);
   const [gardenOpen, setGardenOpen] = useState(false);
+  const [mapOpen,    setMapOpen]    = useState(false);
+  const [starsOpen,  setStarsOpen]  = useState(false);
+  const [mapSnapshot, setMapSnapshot] = useState(() => getMapSnapshot());
 
   const isFormOpen = formState.type !== 'none';
+  const anyModalOpen = isFormOpen || shopOpen || gardenOpen || mapOpen || starsOpen;
+
+  function openMap() {
+    setMapSnapshot(getMapSnapshot());
+    setMapOpen(true);
+  }
 
   return (
     <>
       {/* ── Layer 2: Transparent game canvas ─────────────────────────────── */}
-      <canvas
-        ref={canvasRef}
-        aria-label="Afterlight game world"
-      />
+      <canvas ref={canvasRef} aria-label="Afterlight game world" />
 
-      {/* ── Layer 3: Glass UI panels ──────────────────────────────────────── */}
-
-      {/* Fixed HUD — always visible (hide behind open modals) */}
-      {!isFormOpen && !shopOpen && !gardenOpen && (
+      {/* ── Layer 3: Glass HUD (hidden when any modal is open) ───────────── */}
+      {!anyModalOpen && (
         <>
           <PlayerProfileCard lightBalance={lightBalance} />
           <Compass />
           <NavIconBar />
           <FeatureSidebar
-            onRelease={undefined}
+            onRelease={openCreateForm}
+            onMap={openMap}
+            onStars={() => setStarsOpen(true)}
             onGarden={() => setGardenOpen(true)}
           />
           <ActiveMeteorsPanel meteors={meteors} />
           <ActionBar
+            onMap={openMap}
             onRelease={openCreateForm}
             onGarden={() => setGardenOpen(true)}
           />
@@ -60,11 +69,10 @@ export default function GameCanvas() {
         </>
       )}
 
-      {/* ── Meteor create / read forms ─────────────────────────────────── */}
+      {/* ── Meteor create / read forms ────────────────────────────────────── */}
       {formState.type === 'create' && (
         <MeteorCreateForm onSubmit={submitMeteor} onDismiss={dismissForm} />
       )}
-
       {formState.type === 'read' && (
         <MeteorReadForm
           meteor={formState.meteor}
@@ -75,6 +83,21 @@ export default function GameCanvas() {
 
       {/* ── Notification toast ────────────────────────────────────────────── */}
       {notification && <NotificationToast message={notification} />}
+
+      {/* ── Map overlay ───────────────────────────────────────────────────── */}
+      {mapOpen && (
+        <MapOverlay
+          snapshot={mapSnapshot}
+          meteors={meteors}
+          stars={stars}
+          onClose={() => setMapOpen(false)}
+        />
+      )}
+
+      {/* ── Stars panel ───────────────────────────────────────────────────── */}
+      {starsOpen && (
+        <StarsPanel stars={stars} onClose={() => setStarsOpen(false)} />
+      )}
 
       {/* ── Shop overlay ─────────────────────────────────────────────────── */}
       {shopOpen && (
