@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState, useCallback, type RefObject } from 'react';
 import { GameEngine } from '../game/engine';
-import type { FormState, MeteorCategory, ResonanceResponseType, CatalogItem, OwnedItem, GardenObject } from '../game/types';
+import type { FormState, MeteorCategory, ResonanceResponseType, CatalogItem, OwnedItem, GardenObject, MeteorEntity } from '../game/types';
 
 export interface GameAPI {
   formState: FormState;
@@ -10,6 +10,8 @@ export interface GameAPI {
   catalog: CatalogItem[];
   ownedItems: OwnedItem[];
   gardenObjects: GardenObject[];
+  onlineCount: number;
+  meteors: MeteorEntity[];
   submitMeteor: (category: MeteorCategory, content: string) => void;
   acknowledgeMeteor: (meteorId: string, responseType: ResonanceResponseType) => void;
   dismissForm: () => void;
@@ -26,6 +28,8 @@ export function useGame(canvasRef: RefObject<HTMLCanvasElement | null>): GameAPI
   const [catalog, setCatalog]             = useState<CatalogItem[]>([]);
   const [ownedItems, setOwnedItems]       = useState<OwnedItem[]>([]);
   const [gardenObjects, setGardenObjects] = useState<GardenObject[]>([]);
+  const [onlineCount, setOnlineCount]     = useState(1);
+  const [meteors, setMeteors]             = useState<MeteorEntity[]>([]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -44,6 +48,8 @@ export function useGame(canvasRef: RefObject<HTMLCanvasElement | null>): GameAPI
         setOwnedItems(owned);
       },
       onGardenChanged: setGardenObjects,
+      onOnlineCountChange: setOnlineCount,
+      onMeteorsChanged: setMeteors,
     });
     engineRef.current = engine;
 
@@ -76,6 +82,8 @@ export function useGame(canvasRef: RefObject<HTMLCanvasElement | null>): GameAPI
     catalog,
     ownedItems,
     gardenObjects,
+    onlineCount,
+    meteors,
     submitMeteor:      (cat, content) => engineRef.current?.submitMeteor(cat, content),
     acknowledgeMeteor: (id, type)     => engineRef.current?.acknowledgeMeteor(id, type),
     dismissForm:       ()             => engineRef.current?.dismissForm(),

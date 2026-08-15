@@ -1,17 +1,126 @@
-*,
-*::before,
-*::after {
+/* ── Design tokens ─────────────────────────────────────────────────────────── */
+:root {
+  --sky-base:        #08061a;
+  --sky-mid:         #12103a;
+
+  --glass-bg:        rgba(8, 6, 28, 0.72);
+  --glass-bg-soft:   rgba(12, 9, 34, 0.60);
+  --glass-border:    rgba(130, 100, 220, 0.20);
+  --glass-border-hi: rgba(170, 140, 255, 0.38);
+  --glass-shadow:    0 4px 32px rgba(0, 0, 0, 0.45),
+                     inset 0 1px 0 rgba(180, 150, 255, 0.07);
+
+  --violet: #8b6fd4;
+  --gold:   #f5c542;
+  --teal:   #50c8dc;
+  --rose:   #f472b6;
+  --sage:   #4ade80;
+  --amber:  #fb923c;
+
+  --text-hi:  #ede8fc;
+  --text-mid: rgba(210, 195, 250, 0.65);
+  --text-lo:  rgba(170, 150, 220, 0.38);
+
+  --r-panel: 14px;
+  --r-pill:  999px;
+}
+
+/* ── Reset ─────────────────────────────────────────────────────────────────── */
+*, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-html,
-body {
+/* ── Atmospheric sky background ────────────────────────────────────────────── */
+html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #070912;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--text-hi);
+}
+
+html {
+  background:
+    /* Aurora — top-left violet bloom */
+    radial-gradient(ellipse 700px 480px at 12% 18%, rgba(45,27,105,0.55) 0%, transparent 65%),
+    /* Aurora — top-right blue bloom */
+    radial-gradient(ellipse 580px 380px at 84% 9%, rgba(25,50,130,0.38) 0%, transparent 60%),
+    /* Aurora — right-side column */
+    radial-gradient(ellipse 460px 700px at 96% 58%, rgba(80,50,170,0.22) 0%, transparent 55%),
+    /* Lantern warm glow — ground center */
+    radial-gradient(ellipse 380px 260px at 48% 88%, rgba(251,146,60,0.13) 0%, transparent 52%),
+    /* Faint water shimmer */
+    radial-gradient(ellipse 280px 160px at 58% 76%, rgba(255,200,80,0.055) 0%, transparent 48%),
+    /* Base sky gradient */
+    linear-gradient(175deg, #08061a 0%, #0e0c30 28%, #12103a 54%, #0a0820 100%);
+}
+
+/* Mountain / scene silhouette layer */
+html::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: url('/scene-bg.svg') bottom center / cover no-repeat;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.92;
+}
+
+/* Canvas sits above background, below UI */
+canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  background: transparent;
+}
+
+/* ── Keyframe animations ────────────────────────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(16px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(20px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+@keyframes pulseRing {
+  0%   { transform: scale(1);   opacity: 0.65; }
+  100% { transform: scale(1.55); opacity: 0;   }
+}
+
+@keyframes orbitDrift {
+  0%   { transform: translate(0px, 0px);   }
+  25%  { transform: translate(4px, -3px);  }
+  50%  { transform: translate(-2px, 5px);  }
+  75%  { transform: translate(-5px, -2px); }
+  100% { transform: translate(0px, 0px);   }
+}
+
+/* ── Glass panel utility ────────────────────────────────────────────────────── */
+.glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-panel);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  box-shadow: var(--glass-shadow);
+}
+
+/* ── Accessibility ─────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @keyframes fadeInDown {

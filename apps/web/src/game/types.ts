@@ -78,4 +78,6 @@ export interface GameCallbacks {
   onCatalogReady: (catalog: import('@afterlight/shared-types').CatalogItem[]) => void;
   onShopBought: (item: import('@afterlight/shared-types').CatalogItem, lightBalance: number, ownedItems: import('@afterlight/shared-types').OwnedItem[]) => void;
   onGardenChanged: (gardenObjects: import('@afterlight/shared-types').GardenObject[]) => void;
+  onOnlineCountChange: (count: number) => void;
+  onMeteorsChanged: (meteors: MeteorEntity[]) => void;
 }
