@@ -16,6 +16,7 @@ import DailyLightCard     from './DailyLightCard';
 import ActiveMeteorsPanel from './ActiveMeteorsPanel';
 import MapOverlay         from './MapOverlay';
 import StarsPanel         from './StarsPanel';
+import JournalPanel, { saveJournalEntry } from './JournalPanel';
 
 export default function GameCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -27,18 +28,24 @@ export default function GameCanvas() {
     buyItem, placeGardenObject, removeGardenObject,
   } = useGame(canvasRef);
 
-  const [shopOpen,   setShopOpen]   = useState(false);
-  const [gardenOpen, setGardenOpen] = useState(false);
-  const [mapOpen,    setMapOpen]    = useState(false);
-  const [starsOpen,  setStarsOpen]  = useState(false);
-  const [mapSnapshot, setMapSnapshot] = useState(() => getMapSnapshot());
+  const [shopOpen,     setShopOpen]     = useState(false);
+  const [gardenOpen,   setGardenOpen]   = useState(false);
+  const [mapOpen,      setMapOpen]      = useState(false);
+  const [starsOpen,    setStarsOpen]    = useState(false);
+  const [journalOpen,  setJournalOpen]  = useState(false);
+  const [mapSnapshot, setMapSnapshot]   = useState(() => getMapSnapshot());
 
   const isFormOpen = formState.type !== 'none';
-  const anyModalOpen = isFormOpen || shopOpen || gardenOpen || mapOpen || starsOpen;
+  const anyModalOpen = isFormOpen || shopOpen || gardenOpen || mapOpen || starsOpen || journalOpen;
 
   function openMap() {
     setMapSnapshot(getMapSnapshot());
     setMapOpen(true);
+  }
+
+  function handleSubmitMeteor(category: Parameters<typeof submitMeteor>[0], content: string) {
+    saveJournalEntry(category, content);
+    submitMeteor(category, content);
   }
 
   return (
@@ -51,7 +58,10 @@ export default function GameCanvas() {
         <>
           <PlayerProfileCard lightBalance={lightBalance} />
           <Compass />
-          <NavIconBar />
+          <NavIconBar
+            onJournal={() => setJournalOpen(true)}
+            onWrite={openCreateForm}
+          />
           <FeatureSidebar
             onRelease={openCreateForm}
             onMap={openMap}
@@ -71,7 +81,7 @@ export default function GameCanvas() {
 
       {/* ── Meteor create / read forms ────────────────────────────────────── */}
       {formState.type === 'create' && (
-        <MeteorCreateForm onSubmit={submitMeteor} onDismiss={dismissForm} />
+        <MeteorCreateForm onSubmit={handleSubmitMeteor} onDismiss={dismissForm} />
       )}
       {formState.type === 'read' && (
         <MeteorReadForm
@@ -97,6 +107,11 @@ export default function GameCanvas() {
       {/* ── Stars panel ───────────────────────────────────────────────────── */}
       {starsOpen && (
         <StarsPanel stars={stars} onClose={() => setStarsOpen(false)} />
+      )}
+
+      {/* ── Journal panel ─────────────────────────────────────────────────── */}
+      {journalOpen && (
+        <JournalPanel onClose={() => setJournalOpen(false)} />
       )}
 
       {/* ── Shop overlay ─────────────────────────────────────────────────── */}

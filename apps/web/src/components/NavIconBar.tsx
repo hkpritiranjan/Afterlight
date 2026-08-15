@@ -32,11 +32,21 @@ const ICONS = {
   ),
 };
 
-export default function NavIconBar() {
+interface Props {
+  onJournal?: () => void;
+  onWrite?: () => void;
+}
+
+export default function NavIconBar({ onJournal, onWrite }: Props) {
+  const handlers: Partial<Record<string, () => void>> = {
+    journal: onJournal,
+    write: onWrite,
+  };
+
   return (
     <div style={bar}>
       {(['social', 'journal', 'write', 'settings'] as const).map((key) => (
-        <button key={key} style={btn} aria-label={key} title={key}>
+        <button key={key} style={btn} onClick={handlers[key]} aria-label={key} title={key}>
           {ICONS[key]}
         </button>
       ))}
