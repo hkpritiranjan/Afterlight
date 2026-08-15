@@ -21,7 +21,7 @@ export default function GameCanvas() {
     formState, notification, lightBalance,
     catalog, ownedItems, gardenObjects,
     onlineCount, meteors,
-    submitMeteor, acknowledgeMeteor, dismissForm,
+    openCreateForm, submitMeteor, acknowledgeMeteor, dismissForm,
     buyItem, placeGardenObject, removeGardenObject,
   } = useGame(canvasRef);
 
@@ -52,7 +52,7 @@ export default function GameCanvas() {
           />
           <ActiveMeteorsPanel meteors={meteors} />
           <ActionBar
-            onRelease={() => { /* keyboard E triggers this */ }}
+            onRelease={openCreateForm}
             onGarden={() => setGardenOpen(true)}
           />
           <DailyLightCard />

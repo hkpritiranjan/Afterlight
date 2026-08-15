@@ -166,6 +166,10 @@ export class GameEngine {
     this.callbacks.onFormChange({ type: 'none' });
   }
 
+  openCreateForm(): void {
+    this.callbacks.onFormChange({ type: 'create' });
+  }
+
   dismissForm(): void {
     this.callbacks.onFormChange({ type: 'none' });
   }

@@ -12,6 +12,7 @@ export interface GameAPI {
   gardenObjects: GardenObject[];
   onlineCount: number;
   meteors: MeteorEntity[];
+  openCreateForm: () => void;
   submitMeteor: (category: MeteorCategory, content: string) => void;
   acknowledgeMeteor: (meteorId: string, responseType: ResonanceResponseType) => void;
   dismissForm: () => void;
@@ -84,6 +85,7 @@ export function useGame(canvasRef: RefObject<HTMLCanvasElement | null>): GameAPI
     gardenObjects,
     onlineCount,
     meteors,
+    openCreateForm:    ()             => engineRef.current?.openCreateForm(),
     submitMeteor:      (cat, content) => engineRef.current?.submitMeteor(cat, content),
     acknowledgeMeteor: (id, type)     => engineRef.current?.acknowledgeMeteor(id, type),
     dismissForm:       ()             => engineRef.current?.dismissForm(),
