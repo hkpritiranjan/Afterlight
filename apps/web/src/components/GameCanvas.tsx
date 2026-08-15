@@ -17,6 +17,7 @@ import ActiveMeteorsPanel from './ActiveMeteorsPanel';
 import MapOverlay         from './MapOverlay';
 import StarsPanel         from './StarsPanel';
 import JournalPanel, { saveJournalEntry } from './JournalPanel';
+import EditProfileModal, { loadPlayerName } from './EditProfileModal';
 
 export default function GameCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -33,10 +34,12 @@ export default function GameCanvas() {
   const [mapOpen,      setMapOpen]      = useState(false);
   const [starsOpen,    setStarsOpen]    = useState(false);
   const [journalOpen,  setJournalOpen]  = useState(false);
+  const [profileOpen,  setProfileOpen]  = useState(false);
   const [mapSnapshot, setMapSnapshot]   = useState(() => getMapSnapshot());
+  const [playerName,  setPlayerName]    = useState(() => loadPlayerName() || 'Wanderer');
 
   const isFormOpen = formState.type !== 'none';
-  const anyModalOpen = isFormOpen || shopOpen || gardenOpen || mapOpen || starsOpen || journalOpen;
+  const anyModalOpen = isFormOpen || shopOpen || gardenOpen || mapOpen || starsOpen || journalOpen || profileOpen;
 
   function openMap() {
     setMapSnapshot(getMapSnapshot());
@@ -56,7 +59,11 @@ export default function GameCanvas() {
       {/* ── Layer 3: Glass HUD (hidden when any modal is open) ───────────── */}
       {!anyModalOpen && (
         <>
-          <PlayerProfileCard lightBalance={lightBalance} />
+          <PlayerProfileCard
+            playerName={playerName}
+            lightBalance={lightBalance}
+            onClick={() => setProfileOpen(true)}
+          />
           <Compass />
           <NavIconBar
             onJournal={() => setJournalOpen(true)}
@@ -112,6 +119,15 @@ export default function GameCanvas() {
       {/* ── Journal panel ─────────────────────────────────────────────────── */}
       {journalOpen && (
         <JournalPanel onClose={() => setJournalOpen(false)} />
+      )}
+
+      {/* ── Edit profile modal ────────────────────────────────────────────── */}
+      {profileOpen && (
+        <EditProfileModal
+          currentName={playerName}
+          onSave={setPlayerName}
+          onClose={() => setProfileOpen(false)}
+        />
       )}
 
       {/* ── Shop overlay ─────────────────────────────────────────────────── */}
