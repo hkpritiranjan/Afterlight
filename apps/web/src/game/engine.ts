@@ -4,7 +4,6 @@ import type {
   RemotePlayer,
   MeteorEntity,
   StarEntity,
-  FormState,
   GameCallbacks,
   MeteorCategory,
   ResonanceResponseType,
@@ -21,14 +20,12 @@ import { NetworkClient } from './network';
 const MAX_DT = 0.05;
 const LERP_SPEED = 12;
 
-// Zones placed within the initial viewport (~200-550px from spawn) so they're
-// visible immediately on a 1920×1080 screen without needing to walk first.
 const INITIAL_ZONES: InteractionZone[] = [
-  { id: 'zone-a', x: MAP_WIDTH / 2 - 420, y: MAP_HEIGHT / 2 - 280, label: 'A quiet hollow' },
-  { id: 'zone-b', x: MAP_WIDTH / 2 + 380, y: MAP_HEIGHT / 2 - 330, label: 'The pale arch' },
-  { id: 'zone-c', x: MAP_WIDTH / 2 + 480, y: MAP_HEIGHT / 2 + 220, label: 'Open ground' },
-  { id: 'zone-d', x: MAP_WIDTH / 2,        y: MAP_HEIGHT / 2 + 340, label: 'The far field' },
-  { id: 'zone-e', x: MAP_WIDTH / 2 - 380,  y: MAP_HEIGHT / 2 + 200, label: 'Edge of sight' },
+  { id: 'zone-a', x: MAP_WIDTH * 0.25, y: MAP_HEIGHT * 0.30, label: 'A quiet hollow' },
+  { id: 'zone-b', x: MAP_WIDTH * 0.65, y: MAP_HEIGHT * 0.25, label: 'The pale arch' },
+  { id: 'zone-c', x: MAP_WIDTH * 0.80, y: MAP_HEIGHT * 0.60, label: 'Open ground' },
+  { id: 'zone-d', x: MAP_WIDTH * 0.40, y: MAP_HEIGHT * 0.75, label: 'The far field' },
+  { id: 'zone-e', x: MAP_WIDTH * 0.15, y: MAP_HEIGHT * 0.70, label: 'Edge of sight' },
 ];
 
 function createInitialState(): GameState {
@@ -90,23 +87,35 @@ export class GameEngine {
         this.gardenObjects = gardenObjects;
         this.callbacks.onLightUpdate(lightBalance);
         this.callbacks.onCatalogReady(catalog);
+        this.callbacks.onOnlineCountChange(this.remotePlayers.size + 1);
+        this.callbacks.onMeteorsChanged([...this.meteors.values()]);
+        this.callbacks.onStarsChanged([...this.stars.values()]);
       },
       onPlayerJoined: (playerId, x, y) => {
         if (playerId === this.ownPlayerId) return;
         this.remotePlayers.set(playerId, { playerId, x, y, targetX: x, targetY: y });
+        this.callbacks.onOnlineCountChange(this.remotePlayers.size + 1);
       },
-      onPlayerLeft: (playerId) => { this.remotePlayers.delete(playerId); },
+      onPlayerLeft: (playerId) => {
+        this.remotePlayers.delete(playerId);
+        this.callbacks.onOnlineCountChange(this.remotePlayers.size + 1);
+      },
       onPlayerMoved: (playerId, x, y) => {
         if (playerId === this.ownPlayerId) return;
         const rp = this.remotePlayers.get(playerId);
         if (rp) { rp.targetX = x; rp.targetY = y; }
         else this.remotePlayers.set(playerId, { playerId, x, y, targetX: x, targetY: y });
       },
-      onMeteorCreated: (meteor) => { this.meteors.set(meteor.meteorId, meteor); },
+      onMeteorCreated: (meteor) => {
+        this.meteors.set(meteor.meteorId, meteor);
+        this.callbacks.onMeteorsChanged([...this.meteors.values()]);
+      },
       onStarCreated: (star, meteorId) => {
         this.meteors.delete(meteorId);
         this.stars.set(star.starId, star);
         if (this.nearbyMeteorId === meteorId) this.nearbyMeteorId = null;
+        this.callbacks.onMeteorsChanged([...this.meteors.values()]);
+        this.callbacks.onStarsChanged([...this.stars.values()]);
       },
       onLightEarned: (amount) => {
         this.lightBalance += amount;
@@ -157,6 +166,14 @@ export class GameEngine {
   acknowledgeMeteor(meteorId: string, responseType: ResonanceResponseType): void {
     this.network.sendMeteorAcknowledge(meteorId, responseType);
     this.callbacks.onFormChange({ type: 'none' });
+  }
+
+  getPlayerPos(): { x: number; y: number } { return { ...this.state.player }; }
+  getRemotePlayers(): RemotePlayer[] { return [...this.remotePlayers.values()]; }
+  getZones(): InteractionZone[] { return [...this.state.interactionZones]; }
+
+  openCreateForm(): void {
+    this.callbacks.onFormChange({ type: 'create' });
   }
 
   dismissForm(): void {
@@ -215,7 +232,7 @@ export class GameEngine {
       this.meteors,
       this.stars,
       this.nearbyMeteorId,
-      now,
+      now / 1000,
     );
 
     this.rafId = requestAnimationFrame(this.loop);

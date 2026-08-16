@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import type { CatalogItem, OwnedItem, GardenObject, GardenSymbol } from '../game/types';
 
-const GARDEN_W = 700;
 const GARDEN_H = 450;
 
 const SYMBOL_CHAR: Record<GardenSymbol, string> = {

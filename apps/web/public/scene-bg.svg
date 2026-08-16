@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 600" preserveAspectRatio="xMidYMax slice">
+  <!-- Far mountain range -->
+  <path d="M0,600 L0,320 C120,290 240,280 360,300 C480,270 600,248 720,262 C840,238 960,218 1080,238 C1200,214 1320,224 1440,238 C1560,218 1680,228 1800,244 L1920,248 L1920,600Z" fill="#0c0a25"/>
+  <!-- Mid mountain range -->
+  <path d="M0,600 L0,400 C80,372 160,360 240,376 C320,352 400,332 480,348 C560,332 640,362 720,376 C800,362 880,342 960,358 C1040,342 1120,366 1200,382 C1280,366 1360,346 1440,362 C1520,346 1600,362 1680,376 C1760,362 1840,376 1920,388 L1920,600Z" fill="#08061a"/>
+  <!-- Left forest cluster -->
+  <ellipse cx="55" cy="424" rx="78" ry="98" fill="#050310"/>
+  <ellipse cx="138" cy="403" rx="68" ry="88" fill="#070421"/>
+  <ellipse cx="28" cy="444" rx="48" ry="68" fill="#04020e"/>
+  <rect x="-10" y="472" width="226" height="128" fill="#04030f"/>
+  <!-- Cherry blossom tree left -->
+  <rect x="198" y="352" width="11" height="130" fill="#060418" rx="2"/>
+  <ellipse cx="204" cy="320" rx="82" ry="74" fill="#09061e"/>
+  <ellipse cx="158" cy="342" rx="52" ry="48" fill="#080520"/>
+  <ellipse cx="252" cy="342" rx="48" ry="44" fill="#080520"/>
+  <!-- Pagoda tower center-right -->
+  <rect x="1052" y="282" width="16" height="68" fill="#060418" rx="1"/>
+  <polygon points="1043,287 1075,287 1083,296 1035,296" fill="#060418"/>
+  <polygon points="1039,299 1079,299 1087,308 1031,308" fill="#060418"/>
+  <polygon points="1035,311 1083,311 1091,320 1027,320" fill="#060418"/>
+  <rect x="1042" y="350" width="36" height="7" fill="#06041a"/>
+  <!-- Right pine trees -->
+  <polygon points="1685,600 1708,382 1731,600" fill="#050310"/>
+  <polygon points="1724,600 1750,362 1776,600" fill="#070421"/>
+  <polygon points="1764,600 1793,372 1822,600" fill="#050310"/>
+  <polygon points="1804,600 1838,352 1872,600" fill="#060418"/>
+  <polygon points="1844,600 1876,367 1908,600" fill="#070421"/>
+  <!-- Ground base -->
+  <rect x="0" y="532" width="1920" height="68" fill="#030210"/>
+  <!-- Lantern path glow -->
+  <ellipse cx="960" cy="562" rx="290" ry="48" fill="#3d1a00" opacity="0.22"/>
+  <!-- Water reflection -->
+  <rect x="310" y="512" width="680" height="28" fill="#050d2a" opacity="0.38"/>
+</svg>
