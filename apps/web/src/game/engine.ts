@@ -19,6 +19,7 @@ import { NetworkClient } from './network';
 
 const MAX_DT = 0.05;
 const LERP_SPEED = 12;
+const CAMERA_LERP = 6;
 
 const INITIAL_ZONES: InteractionZone[] = [
   { id: 'zone-a', x: MAP_WIDTH * 0.25, y: MAP_HEIGHT * 0.30, label: 'A quiet hollow' },
@@ -49,6 +50,10 @@ export class GameEngine {
   private nearbyMeteorId: string | null = null;
   private rafId: number | null = null;
   private lastTime = 0;
+  private lastDirX = 0;
+  private lastDirY = 1;
+  private camX = MAP_WIDTH / 2;
+  private camY = MAP_HEIGHT / 2;
   private callbacks: GameCallbacks;
 
   // Stage 4: personal space state
@@ -200,6 +205,8 @@ export class GameEngine {
     this.state = tick(this.state, movement, dt);
 
     if (movement.dx !== 0 || movement.dy !== 0) {
+      this.lastDirX = movement.dx;
+      this.lastDirY = movement.dy;
       this.network.sendMove(movement.dx, movement.dy, dt);
     }
 
@@ -218,12 +225,16 @@ export class GameEngine {
 
     this.interpolateRemotePlayers(dt);
 
-    const camera = computeCamera(
+    const targetCamera = computeCamera(
       this.state.player.x,
       this.state.player.y,
       this.renderer.viewportW,
       this.renderer.viewportH,
     );
+    const ct = Math.min(1, dt * CAMERA_LERP);
+    this.camX += (targetCamera.x - this.camX) * ct;
+    this.camY += (targetCamera.y - this.camY) * ct;
+    const camera = { x: this.camX, y: this.camY };
 
     this.renderer.render(
       this.state,
@@ -233,6 +244,8 @@ export class GameEngine {
       this.stars,
       this.nearbyMeteorId,
       now / 1000,
+      this.lastDirX,
+      this.lastDirY,
     );
 
     this.rafId = requestAnimationFrame(this.loop);
